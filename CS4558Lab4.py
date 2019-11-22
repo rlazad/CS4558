@@ -7,6 +7,8 @@ import time
 import dpkt
 import socket
 import random
+import operator
+import numpy as np 
 import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
 ##########################################################################################################
@@ -25,7 +27,8 @@ ip_len = 0
 #Probability L/NumPackets
 Prob = 0.00025
 tuple_dict = {}
-
+tcp_pkt = []
+num_byt = []
 
 FIN = 0x01
 SYN = 0x02
@@ -47,6 +50,7 @@ for ts, data in pcap:
         if rand <= Prob:
             flow_count +=1
             tcp = ip.data
+            num_byt.append(ip.len)
             #print(len(data), len(ip.data), ip.len, len(ip))
             packet = (socket.inet_ntoa(ip.src), socket.inet_ntoa(ip.dst), ip.p, tcp.sport, tcp.dport)
             if packet in tuple_dict.keys():
@@ -55,16 +59,49 @@ for ts, data in pcap:
                 print('same')
             else:
                 tuple_dict[packet] = (num_pkts, ip.len)
+            if ip.p == 6:
+                tcp_pkt.append(ip.len)
     except:
         bad_pkts+=1
 
-    if num_pkts >= 30000:
+    if num_pkts >= 10000:
        break
 
-print(tuple_dict)
-# x = []
-# for key, values in tuple_dict.items():
-#     for i in values:
-        
-x = sorted(tuple_dict.items(), key =lambda kv:(kv[1], kv[0])) 
-print(x)
+##########################################################################################################
+##########################################################################################################
+#Number of flows
+print()
+print('Number of flows without probability: \n', num_pkts, '\n'
+    'Number of flows with probability: \n', flow_count)
+print('------------------')
+#top 5 heavy hitters
+top5_HH = dict(sorted(tuple_dict.items(), key =lambda x:x[1][1], reverse = True)[:5]) 
+print('Top 5 Heavy hitter: \n', top5_HH)
+print('------------------')
+##########################################################################################################
+##########################################################################################################
+def min_max_avg(x, r):
+    return ['Minimun', r ,'per flow:', min(x),
+    'Maximum byte per flow:', max(x),
+    'Average byte per flow:', (sum(x)/len(x))]
+
+uniq_src = []
+uniq_dst = []
+num_pkt_PF = []
+for a, b in tuple_dict.items():
+    uniq_src.append(a[0])
+    uniq_dst.append(a[1])
+    num_pkt_PF.append(b[0])
+
+#Unique IP sourc and IP destination
+print('Number of Unique IP source:\n', 
+    len(np.unique(uniq_src)),'\n'
+    'Number of Unique IP destination:\n',
+    len(np.unique(uniq_dst)))
+print('------------------')
+##########################################################################################################
+##########################################################################################################
+print(min_max_avg(num_byt, byte))
+print('------------------')
+print(min_max_avg(num_pkt_PF))
+
