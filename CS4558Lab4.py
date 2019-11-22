@@ -9,8 +9,8 @@ import socket
 import random
 import operator
 import numpy as np 
-import matplotlib.mlab as mlab
-import matplotlib.pyplot as plt
+# import matplotlib.mlab as mlab
+# import matplotlib.pyplot as plt
 ##########################################################################################################
 ##########################################################################################################
 fd = open("peering.pcap", "rb")
@@ -52,7 +52,8 @@ for ts, data in pcap:
             tcp = ip.data
             num_byt.append(ip.len)
             #print(len(data), len(ip.data), ip.len, len(ip))
-            packet = (socket.inet_ntoa(ip.src), socket.inet_ntoa(ip.dst), ip.p, tcp.sport, tcp.dport)
+            packet = (socket.inet_ntoa(ip.src), socket.inet_ntoa(ip.dst), 
+                ip.p, tcp.sport, tcp.dport)
             if packet in tuple_dict.keys():
                 ip_len += ip.len
                 tuple_dict[packet].add(num_pkts, ip_len)
@@ -64,8 +65,8 @@ for ts, data in pcap:
     except:
         bad_pkts+=1
 
-    if num_pkts >= 10000:
-       break
+    # if num_pkts >= 10000:
+    #    break
 
 ##########################################################################################################
 ##########################################################################################################
@@ -75,16 +76,12 @@ print('Number of flows without probability: \n', num_pkts, '\n'
     'Number of flows with probability: \n', flow_count)
 print('------------------')
 #top 5 heavy hitters
-top5_HH = dict(sorted(tuple_dict.items(), key =lambda x:x[1][1], reverse = True)[:5]) 
+top5_HH = dict(sorted(tuple_dict.items(), 
+    key =lambda x:x[1][1], reverse = True)[:5]) 
 print('Top 5 Heavy hitter: \n', top5_HH)
 print('------------------')
 ##########################################################################################################
 ##########################################################################################################
-def min_max_avg(x, r):
-    return ['Minimun', r ,'per flow:', min(x),
-    'Maximum byte per flow:', max(x),
-    'Average byte per flow:', (sum(x)/len(x))]
-
 uniq_src = []
 uniq_dst = []
 num_pkt_PF = []
@@ -101,7 +98,22 @@ print('Number of Unique IP source:\n',
 print('------------------')
 ##########################################################################################################
 ##########################################################################################################
-print(min_max_avg(num_byt, byte))
+def min_max_avg(x, r):
+    return ['Minimun ' + r +' per flow:', min(x),
+    'Maximum '+r+ ' per flow:', max(x),
+    'Average '+r+' per flow:', round(sum(x)/len(x), 2)]
+    
+print(min_max_avg(num_byt, 'bytes'))
 print('------------------')
-print(min_max_avg(num_pkt_PF))
-
+print(min_max_avg(num_pkt_PF, 'packets'))
+print('------------------')
+print('Fraction of TCP traffic vs tatal byte count: \n',
+    round((sum(tcp_pkt)/sum(num_byt))*100, 2), 'percent')
+##########################################################################################################
+##########################################################################################################
+print('----------------------')
+print('This program took:')
+if (time.time() - start_time) > 60:
+    print(round((time.time() - start_time)/60, 3), 'minutes to run')
+else:
+    print(round((time.time() - start_time), 3), 'seconds to run')
