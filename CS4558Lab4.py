@@ -9,71 +9,57 @@ import socket
 import random
 import operator
 import numpy as np 
-# import matplotlib.mlab as mlab
-# import matplotlib.pyplot as plt
+#from countminsketch import CountMinSketch
 ##########################################################################################################
 ##########################################################################################################
 fd = open("peering.pcap", "rb")
 pcap = dpkt.pcap.Reader(fd)
 start_time = time.time()
 #Initializers
-IPV4 = 0
-num_pkts = 0
-bad_pkts = 0
-prt_2323 = 0
-data_length = 0
-flow_count = 0
 ip_len = 0
+bad_pkts = 0
+num_pkts = 0
+flow_count = 0
 #Probability L/NumPackets
 Prob = 0.00025
 tuple_dict = {}
 tcp_pkt = []
-num_byt = []
 
-FIN = 0x01
-SYN = 0x02
-RST = 0x04
-PSH = 0x08
-ACK = 0x10
-URG = 0x20
-ECE = 0x40
-CWR = 0x80
+#Count-min sketch
+#sketch = CountMinSketch(width=1000, depth=10)
 ##########################################################################################################
 ##########################################################################################################
 #Main for loop to extract data
 for ts, data in pcap:
 	#--------------------------------------
     try:
-        num_pkts+=1 #total number of packets
+        num_pkts += 1
         ip = dpkt.ip.IP(data)
         rand = random.random()
         if rand <= Prob:
             flow_count +=1
             tcp = ip.data
-            num_byt.append(ip.len)
-            #print(len(data), len(ip.data), ip.len, len(ip))
             packet = (socket.inet_ntoa(ip.src), socket.inet_ntoa(ip.dst), 
                 ip.p, tcp.sport, tcp.dport)
             if packet in tuple_dict.keys():
                 ip_len += ip.len
-                tuple_dict[packet].add(num_pkts, ip_len)
-                print('same')
+                tuple_dict[packet].add(flow_count, ip_len)
             else:
-                tuple_dict[packet] = (num_pkts, ip.len)
+                tuple_dict[packet] = (flow_count, ip.len)
             if ip.p == 6:
                 tcp_pkt.append(ip.len)
     except:
         bad_pkts+=1
 
-    # if num_pkts >= 10000:
-    #    break
+    if num_pkts >= 30000:
+       break
 
 ##########################################################################################################
 ##########################################################################################################
 #Number of flows
 print()
-print('Number of flows without probability: \n', num_pkts, '\n'
-    'Number of flows with probability: \n', flow_count)
+print('Number of packets: \n', num_pkts, '\n'
+    'Number of flows: \n', flow_count)
 print('------------------')
 #top 5 heavy hitters
 top5_HH = dict(sorted(tuple_dict.items(), 
@@ -85,10 +71,15 @@ print('------------------')
 uniq_src = []
 uniq_dst = []
 num_pkt_PF = []
+num_byt_PF = []
 for a, b in tuple_dict.items():
     uniq_src.append(a[0])
     uniq_dst.append(a[1])
     num_pkt_PF.append(b[0])
+    num_byt_PF.append(b[1])
+    print(a, type(a))
+    # sketch.add(a[0:4])
+    # print(sketch.check(a[0:4]))
 
 #Unique IP sourc and IP destination
 print('Number of Unique IP source:\n', 
@@ -103,12 +94,17 @@ def min_max_avg(x, r):
     'Maximum '+r+ ' per flow:', max(x),
     'Average '+r+' per flow:', round(sum(x)/len(x), 2)]
     
-print(min_max_avg(num_byt, 'bytes'))
+print(min_max_avg(num_byt_PF, 'bytes'))
 print('------------------')
 print(min_max_avg(num_pkt_PF, 'packets'))
 print('------------------')
 print('Fraction of TCP traffic vs tatal byte count: \n',
-    round((sum(tcp_pkt)/sum(num_byt))*100, 2), 'percent')
+    round((sum(tcp_pkt)/sum(num_byt_PF))*100, 2), 'percent')
+##########################################################################################################
+##########################################################################################################
+#Extra credit 
+print('----------------------')
+print(sketch.check('a'))
 ##########################################################################################################
 ##########################################################################################################
 print('----------------------')
